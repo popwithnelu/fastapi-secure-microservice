@@ -52,7 +52,7 @@ def admin_overview(user: dict = Depends(require_role("admin"))):
 
 @app.post("/items")
 def create_item(item: dict, user: dict = Depends(get_current_user)):
-    item_id = len(ITEMS) + 1
+    item_id = max(ITEMS.keys(), default=0) + 1
     ITEMS[item_id] = {**item, "owner": user["email"]}
     return {"id": item_id, **ITEMS[item_id]}
 
@@ -60,3 +60,22 @@ def create_item(item: dict, user: dict = Depends(get_current_user)):
 @app.get("/items")
 def list_items(user: dict = Depends(get_current_user)):
     return {"items": [{"id": k, **v} for k, v in ITEMS.items()]}
+
+
+@app.get("/items/{item_id}")
+def get_item(item_id: int, user: dict = Depends(get_current_user)):
+    item = ITEMS.get(item_id)
+    if item is None:
+        raise HTTPException(404, "Item not found")
+    return {"id": item_id, **item}
+
+
+@app.delete("/items/{item_id}")
+def delete_item(item_id: int, user: dict = Depends(get_current_user)):
+    item = ITEMS.get(item_id)
+    if item is None:
+        raise HTTPException(404, "Item not found")
+    if item["owner"] != user["email"] and "admin" not in user["roles"]:
+        raise HTTPException(403, "Only the owner or an admin can delete this item")
+    deleted = ITEMS.pop(item_id)
+    return {"deleted": True, "id": item_id, **deleted}
