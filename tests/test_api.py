@@ -38,6 +38,32 @@ def test_unauthorized_and_bad_login():
     assert client.post("/token", data={"username": "user@example.com", "password": "nope"}).status_code == 401
 
 
+def test_item_detail_and_delete_ownership():
+    owner = _token("user@example.com", "user123")
+    owner_headers = {"Authorization": f"Bearer {owner}"}
+    created = client.post("/items", json={"name": "owned-widget"}, headers=owner_headers)
+    assert created.status_code == 200
+    item_id = created.json()["id"]
+
+    # Any authenticated user can read a single item; missing ids are 404.
+    assert client.get(f"/items/{item_id}", headers=owner_headers).json()["name"] == "owned-widget"
+    assert client.get("/items/999999", headers=owner_headers).status_code == 404
+    assert client.get(f"/items/{item_id}").status_code == 401
+
+    # An admin-owned item cannot be deleted by a non-admin non-owner (403),
+    # but an admin can delete any item.
+    admin = _token("admin@example.com", "admin123")
+    admin_headers = {"Authorization": f"Bearer {admin}"}
+    admin_item = client.post("/items", json={"name": "admin-widget"}, headers=admin_headers)
+    admin_item_id = admin_item.json()["id"]
+    assert client.delete(f"/items/{admin_item_id}", headers=owner_headers).status_code == 403
+
+    removed = client.delete(f"/items/{item_id}", headers=admin_headers)
+    assert removed.status_code == 200 and removed.json()["deleted"] is True
+    assert client.get(f"/items/{item_id}", headers=owner_headers).status_code == 404
+    assert client.delete(f"/items/{item_id}", headers=admin_headers).status_code == 404
+
+
 def test_items_require_auth_and_rate_limiter():
     token = _token("user@example.com", "user123")
     headers = {"Authorization": f"Bearer {token}"}
