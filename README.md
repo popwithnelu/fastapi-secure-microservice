@@ -10,6 +10,8 @@ authorization and operational endpoints.
   (e.g. `/admin/overview` requires `admin`)
 - **Rate limiting** — fixed-window limiter, in-memory by default, Redis-backed
   when `REDIS_URL` is set
+- **Items with ownership** — `POST /items`, `GET /items`, `GET /items/{id}`,
+  and `DELETE /items/{id}`; only the owner or an admin can delete an item
 - **Health & metrics** — `/health` (uptime), `/metrics` (request/item counts)
 - **Docker** — `docker-compose.yml` runs the API with PostgreSQL (pgvector
   image) and Redis
@@ -22,7 +24,6 @@ table and `JWT_SECRET` comes from the environment.
 Python, FastAPI, PyJWT, PostgreSQL, Redis, Docker.
 
 ## Run
-
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload
@@ -31,13 +32,11 @@ curl -X POST localhost:8000/token -d 'username=user@example.com&password=user123
 ```
 
 ## Tests
-
 ```bash
-python -m pytest   # offline: auth flow, RBAC, rate limiting, items
+python -m pytest  # offline: auth flow, RBAC, rate limiting, items
 ```
 
 ## Project structure
-
 ```
 app/ (main, auth, security, ratelimit) · Dockerfile · docker-compose.yml · tests/test_api.py
 ```
